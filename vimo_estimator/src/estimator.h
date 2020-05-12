@@ -10,10 +10,7 @@
 #include "initial/initial_ex_rotation.h"
 #include <std_msgs/Header.h>
 #include <std_msgs/Float32.h>
-
-#include <nav_msgs/Odometry.h>
-#include <quadrotor_msgs/ControlCommand.h>
-#include <quadrotor_common/control_command.h>
+#include <blackbird/MotorRPM.h>
 
 #include <ceres/ceres.h>
 #include "factor/imu_factor.h"

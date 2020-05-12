@@ -8,6 +8,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
 
+#include <math.h> 
 #include "estimator.h"
 #include "parameters.h"
 #include "utility/visualization.h"
@@ -18,7 +19,7 @@ Estimator estimator;
 std::condition_variable con;
 double current_time = -1;
 
-using controlMsgType = quadrotor_msgs::ControlCommand::ConstPtr;
+using controlMsgType = blackbird::MotorRPM::ConstPtr;
 queue<sensor_msgs::ImuConstPtr> imu_buf;
 queue<controlMsgType> control_buf;
 queue<sensor_msgs::PointCloudConstPtr> feature_buf;
@@ -45,6 +46,7 @@ double last_imu_t = 0;
 
 bool beginning = true;
 double last_Fz = 0;
+Eigen::Quaterniond imu2body(0.707997, 0.004706, -0.003721, 0.706190);
 Eigen::Vector3d last_accel(0.0,0.0,0.0);
 Eigen::Vector3d last_angvel(0.0,0.0,0.0);
 double last_control_t = 0;
@@ -206,8 +208,30 @@ void imu_callback(const sensor_msgs::ImuConstPtr &imu_msg)
     }
     last_imu_t = imu_msg->header.stamp.toSec();
 
+    sensor_msgs::Imu msg = *imu_msg;
+    msg.linear_acceleration.x = -imu_msg->linear_acceleration.y;
+    msg.linear_acceleration.y = -imu_msg->linear_acceleration.x;
+    msg.linear_acceleration.z = -imu_msg->linear_acceleration.z;
+    msg.angular_velocity.x = -imu_msg->angular_velocity.y;
+    msg.angular_velocity.y = -imu_msg->angular_velocity.x;
+    msg.angular_velocity.z = -imu_msg->angular_velocity.z;
+
+    // Eigen::Vector3d accel(imu_msg->linear_acceleration.x, imu_msg->linear_acceleration.y, imu_msg->linear_acceleration.z);
+    // Eigen::Vector3d angvel(imu_msg->angular_velocity.x, imu_msg->angular_velocity.y, imu_msg->angular_velocity.z);
+    // accel = imu2body.normalized().toRotationMatrix() * accel;
+    // angvel = imu2body.normalized().toRotationMatrix() * angvel;
+    // msg.linear_acceleration.x = accel.x();
+    // msg.linear_acceleration.y = accel.y();
+    // msg.linear_acceleration.z = accel.z();
+    // msg.angular_velocity.x = angvel.x();
+    // msg.angular_velocity.y = angvel.y();
+    // msg.angular_velocity.z = angvel.z();
+
+
+    sensor_msgs::ImuConstPtr msg_ptr(new sensor_msgs::Imu(msg));
+
     m_buf.lock();
-    imu_buf.push(imu_msg);
+    imu_buf.push(msg_ptr);
     m_buf.unlock();
     con.notify_one();
 
@@ -215,7 +239,7 @@ void imu_callback(const sensor_msgs::ImuConstPtr &imu_msg)
 
     {
         std::lock_guard<std::mutex> lg(m_state);
-        predict(imu_msg);
+        predict(msg_ptr);
         std_msgs::Header header = imu_msg->header;
         header.frame_id = "world";
         if (estimator.solver_flag == Estimator::SolverFlag::NON_LINEAR)
@@ -288,93 +312,6 @@ void relocalization_callback(const sensor_msgs::PointCloudConstPtr &points_msg)
     m_buf.unlock();
 }
 
-void process_measurements_at_imu_rate(std::pair<std::pair<std::vector<sensor_msgs::ImuConstPtr>,std::vector<controlMsgType>>, sensor_msgs::PointCloudConstPtr> & measurement)
-{
-    auto img_msg = measurement.second;
-    double dx = 0, dy = 0, dz = 0, rx = 0, ry = 0, rz = 0, Fz = last_Fz;
-    std::vector<sensor_msgs::ImuConstPtr>::iterator imu_it = measurement.first.first.begin();
-    std::vector<controlMsgType>::iterator control_it = measurement.first.second.begin();
-
-    
-    for (; imu_it!=measurement.first.first.end(); ++imu_it)
-    {
-
-        double t = (*imu_it)->header.stamp.toSec();
-        double img_t = img_msg->header.stamp.toSec() + estimator.td;
-
-        if (t <= img_t)
-        { 
-            if (current_time < 0)
-                current_time = t;
-
-
-            double dt = t - current_time;
-            ROS_ASSERT(dt >= 0);
-            current_time = t;
-            
-
-            dx = (*imu_it)->linear_acceleration.x;
-            dy = (*imu_it)->linear_acceleration.y;
-            dz = (*imu_it)->linear_acceleration.z;
-            rx = (*imu_it)->angular_velocity.x;
-            ry = (*imu_it)->angular_velocity.y;
-            rz = (*imu_it)->angular_velocity.z;
-
-            if (USE_VIMO)
-            {
-                if (control_it!=measurement.first.second.end())
-                {
-                    while ((control_it+1)!=measurement.first.second.end() && (*(control_it+1))->header.stamp.toSec() < current_time)
-                    {
-                        ++control_it;
-                    }
- 
-                    Fz = SCALE_THRUST_INPUT * (*control_it)->collective_thrust;
-                    ++control_it;
-                }
-            }
-            
-
-            estimator.processIMUandThrust(dt, Vector3d(dx, dy, dz), Vector3d(rx, ry, rz), Fz);
-        }
-        else
-        {
-            double dt_1 = img_t - current_time;
-            double dt_2 = t - img_t;
-            current_time = img_t;
-            ROS_ASSERT(dt_1 >= 0);
-            ROS_ASSERT(dt_2 >= 0);
-            ROS_ASSERT(dt_1 + dt_2 > 0);
-            double w1 = dt_2 / (dt_1 + dt_2);
-            double w2 = dt_1 / (dt_1 + dt_2);
-            dx = w1 * dx + w2 * (*imu_it)->linear_acceleration.x;
-            dy = w1 * dy + w2 * (*imu_it)->linear_acceleration.y;
-            dz = w1 * dz + w2 * (*imu_it)->linear_acceleration.z;
-            rx = w1 * rx + w2 * (*imu_it)->angular_velocity.x;
-            ry = w1 * ry + w2 * (*imu_it)->angular_velocity.y;
-            rz = w1 * rz + w2 * (*imu_it)->angular_velocity.z;
-
-            if (USE_VIMO)
-            {
-                if (control_it!=measurement.first.second.end())
-                {
-                    while ((control_it+1)!=measurement.first.second.end() && (*(control_it+1))->header.stamp.toSec() < img_t)
-                    {
-                        ++control_it;
-                    }
-
-                    Fz = SCALE_THRUST_INPUT * (*control_it)->collective_thrust;
-                    ++control_it;
-                }
-            }
-
-            estimator.processIMUandThrust(dt_1, Vector3d(dx, dy, dz), Vector3d(rx, ry, rz), Fz);
-        }
-
-        last_Fz = Fz;
-    }
-}
-
 void process_measurements_at_control_input_rate(std::pair<std::pair<std::vector<sensor_msgs::ImuConstPtr>,std::vector<controlMsgType>>, sensor_msgs::PointCloudConstPtr> & measurement)
 {
     auto img_msg = measurement.second;
@@ -398,7 +335,8 @@ void process_measurements_at_control_input_rate(std::pair<std::pair<std::vector<
             ROS_ASSERT(dt >= 0);
             current_time = t;
 
-            Fz = SCALE_THRUST_INPUT * (*control_it)->collective_thrust;
+            double sum_sqr_rpm = pow((*control_it)->rpm[0], 2) + pow((*control_it)->rpm[1], 2) + pow((*control_it)->rpm[2], 2) + pow((*control_it)->rpm[3], 2);
+            Fz = SCALE_THRUST_INPUT * sum_sqr_rpm * (2.03e-8/0.915);
 
             if (imu_it!=measurement.first.first.end())
             {
@@ -451,7 +389,8 @@ void process_measurements_at_control_input_rate(std::pair<std::pair<std::vector<
             double w1 = dt_2 / (dt_1 + dt_2);
             double w2 = dt_1 / (dt_1 + dt_2);
 
-            Fz = w1 * Fz + w2 * SCALE_THRUST_INPUT * (*control_it)->collective_thrust;
+            double sum_sqr_rpm = pow((*control_it)->rpm[0], 2) + pow((*control_it)->rpm[1], 2) + pow((*control_it)->rpm[2], 2) + pow((*control_it)->rpm[3], 2);
+            Fz = w1 * Fz + w2 * SCALE_THRUST_INPUT * sum_sqr_rpm * (2.03e-8/0.915);
 
             if (imu_it!=measurement.first.first.end())
             {
@@ -477,8 +416,6 @@ void process_measurements_at_control_input_rate(std::pair<std::pair<std::vector<
                 ++imu_it;
             }
 
-
-
             estimator.processIMUandThrust(dt_1, Vector3d(dx, dy, dz), Vector3d(rx, ry, rz), Fz);
         }
 
@@ -503,15 +440,7 @@ void VIMO_process()
         for (auto &measurement : measurements)
         {
             auto img_msg = measurement.second;
-
-            if (PROCESS_AT_CONTROL_INPUT_RATE)
-            {
-                process_measurements_at_control_input_rate(measurement);
-            }
-            else
-            {
-                process_measurements_at_imu_rate(measurement);
-            }
+            process_measurements_at_control_input_rate(measurement);
             
             // set relocalization frame
             sensor_msgs::PointCloudConstPtr relo_msg = NULL;
