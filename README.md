@@ -41,16 +41,24 @@ Clone the repository and catkin_make:
 **Note: Current VIMO version fails if control commands are zero.** Therefore, it is recommended to run it offline on datasets and ros bags. 
 
 ## 3. VIMO on Public datasets
-We can only run VIMO on datasets that contain motor speeds or control commands. One such dataset is [Blackbird Dataset](https://github.com/mit-fast/Blackbird-Dataset). We tested VIMO on Blackbird's **star** and **picasso** sequences.
+We can only run VIMO on datasets that contain motor speeds or control commands. One such dataset is [Blackbird Dataset](https://github.com/mit-fast/Blackbird-Dataset). We tested VIMO on Blackbird's **star** and **picasso** sequences. Settings to run VIMO on Blackbird dataset are in **blackbird** branch.
 
-
-Open three terminals, launch the vimo_estimator , rviz and play the bag file respectively. Take star_maxSpeed1p0 for example
 ```
     cd ~/catkin_ws/src/vimo
     git checkout blackbird
+    cd ../..
+    catkin_make
+```
+
+Open three terminals, launch the vimo_estimator, rviz and play the bag file respectively. Take star_maxSpeed1p0 for example
+```
+    cd ~/catkin_ws/src/vimo
+    git checkout blackbird
+    cd ../..
+    catkin_make
     roslaunch vimo_estimator vimo.launch 
     roslaunch vimo_estimator vins_rviz.launch
-    rosbag play -s 22 YOUR_PATH_TO_DATASET/star_maxSpeed1p0.bag YOUR_PATH_TO_DATASET/star_maxSpeed1p0_images.bag 
+    rosbag play YOUR_PATH_TO_DATASET/star_maxSpeed1p0.bag YOUR_PATH_TO_DATASET/star_maxSpeed1p0_images.bag 
 ```
 
 <!-- (Optional) Visualize ground truth. A naive benchmark publisher from [VINS-Mono](https://github.com/HKUST-Aerial-Robotics/VINS-Mono) can help you visualize the ground truth. It uses a naive strategy to align VIMO with ground truth. Just for visualization. not for quantitative comparison on academic publications.
