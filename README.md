@@ -46,6 +46,8 @@ We can only run VIMO on datasets that contain motor speeds or control commands. 
 
 Open three terminals, launch the vimo_estimator , rviz and play the bag file respectively. Take star_maxSpeed1p0 for example
 ```
+    cd ~/catkin_ws/src/vimo
+    git checkout blackbird
     roslaunch vimo_estimator vimo.launch 
     roslaunch vimo_estimator vins_rviz.launch
     rosbag play -s 22 YOUR_PATH_TO_DATASET/star_maxSpeed1p0.bag YOUR_PATH_TO_DATASET/star_maxSpeed1p0_images.bag 
