@@ -1,0 +1,98 @@
+%YAML:1.0
+
+# Estimator
+use_vimo:  1                        # set to 1 to run VIMO, set to 0 to run VINS-Mono
+process_at_control_input_rate: 0    # set to 1 if control commands for VIMO have higher frequency than IMU
+
+# topic names
+imu_topic: "/snappy/snappy_imu"
+image_topic: "/snappy/snappy_cam/optic"
+control_topic: "/snappy/control_command"
+
+# paths to store results of the state, computation times and external force estimates
+output_path: "/home/barza/barza-vins-out" # path for csv file
+
+#camera calibration 
+model_type: PINHOLE
+camera_name: camera
+image_width: 640
+image_height: 480
+distortion_parameters:
+   k1: -0.25671807  
+   k2: 0.04725751 
+   p1: 0.00104411
+   p2: -0.00062039
+projection_parameters:
+   fx: 286.82575808
+   fy: 286.84568334
+   cx: 315.77845816
+   cy: 239.75430535
+
+# Extrinsic parameter between IMU and Camera.
+estimate_extrinsic: 0   # 0  Have an accurate extrinsic parameters. We will trust the following imu^R_cam, imu^T_cam, don't change it.
+                        # 1  Have an initial guess about extrinsic parameters. We will optimize around your initial guess.
+                        # 2  Don't know anything about extrinsic parameters. You don't need to give R,T. We will try to calibrate it. Do some rotation movement at beginning.                        
+#If you choose 0 or 1, you should write down the following matrix.
+#Rotation from camera frame to imu frame, imu^R_cam
+extrinsicRotation: !!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: d
+   data: [ -0.0933, -0.7336, 0.6731, -0.9951, 0.0917, -0.0380, -0.0338, -0.6733, -0.7386]
+  
+#Translation from camera frame to imu frame, imu^T_cam
+extrinsicTranslation: !!opencv-matrix
+   rows: 3
+   cols: 1
+   dt: d
+   data: [-0.005, 0.015, 0.0]
+
+#feature traker paprameters
+max_cnt: 150            # max feature number in feature tracking
+min_dist: 30            # min distance between two features 
+freq: 10                # frequence (Hz) of publish tracking result. At least 10Hz for good estimation. If set 0, the frequence will be same as raw image 
+F_threshold: 1.0        # ransac threshold (pixel)
+show_track: 1           # publish tracking image as topic
+equalize: 0             # if image is too dark or light, trun on equalize to find enough features
+fisheye: 1              # if using fisheye, trun on it. A circle mask will be loaded to remove edge noisy points
+
+#optimization parameters
+max_solver_time: 0.06  # max solver itration time (ms), to guarantee real time
+max_num_iterations: 10   # max solver itrations, to guarantee real time
+keyframe_parallax: 10.0 # keyframe selection threshold (pixel)
+
+#imu parameters       The more accurate parameters you provide, the better performance
+acc_n: !!opencv-matrix # accelerometer measurement noise standard deviation.
+   rows: 3
+   cols: 1
+   dt: d
+   data: [0.05, 0.05, 0.1]
+gyr_n: 0.05        # gyroscope measurement noise standard deviation.     
+acc_w: 0.02         # accelerometer bias random work noise standard deviation. 
+gyr_w: 4.0e-5       # gyroscope bias random work noise standard deviation.
+g_norm: 9.81007     # gravity magnitude
+
+#model parameters       The more accurate parameters you provide, the better performance
+control_thrust_z_n: 0.08    # standard deviation for noise in mass normalized collective thrust in body z axis (propellor axis)
+control_thrust_x_y_n: 0.05  # standard deviation for noise in mass normalized collective thrust in body x and y axis
+fext_norm_weight: 1         # weight on zero prior for external force norm
+scale_thrust_input: 0.75 
+
+#loop closure parameters
+loop_closure: 0                    # start loop closure
+load_previous_pose_graph: 0        # load and reuse previous pose graph; load from 'pose_graph_save_path'
+fast_relocalization: 0             # useful in real-time and large project
+pose_graph_save_path: "/home/barza/barza-vins-out/pose_graph/" # save and load path
+
+#unsynchronization parameters
+estimate_td: 0                      # online estimate time offset between camera and imu
+td: 0.0                             # initial value of time offset. unit: s. readed image clock + td = real image clock (IMU clock)
+
+#rolling shutter parameters
+rolling_shutter: 0                  # 0: global shutter camera, 1: rolling shutter camera
+rolling_shutter_tr: 0               # unit: s. rolling shutter read out time per frame (from data sheet).
+
+#visualization parameters
+save_image: 1                   # save image in pose graph for visualization prupose; you can close this function by setting 0 
+visualize_imu_forward: 0        # output imu forward propogation to achieve low latency and high frequence results
+visualize_camera_size: 0.4      # size of camera marker in RVIZ
