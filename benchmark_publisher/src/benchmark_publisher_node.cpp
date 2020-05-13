@@ -75,12 +75,12 @@ void odom_callback(const nav_msgs::OdometryConstPtr &odom_msg)
                               odom_msg->pose.pose.orientation.z) *
                   Quaterniond(benchmark[idx - 1].qw,
                               benchmark[idx - 1].qx,
-                              benchmark[idx - 1].qy,
-                              benchmark[idx - 1].qz).inverse();
+                              -benchmark[idx - 1].qy,
+                              -benchmark[idx - 1].qz).inverse();
         baseTgt = Vector3d{odom_msg->pose.pose.position.x,
                            odom_msg->pose.pose.position.y,
                            odom_msg->pose.pose.position.z} -
-                  baseRgt * Vector3d{benchmark[idx - 1].px, benchmark[idx - 1].py, benchmark[idx - 1].pz};
+                  baseRgt * Vector3d{benchmark[idx - 1].px, -benchmark[idx - 1].py, -benchmark[idx - 1].pz};
         return;
     }
 
@@ -89,15 +89,15 @@ void odom_callback(const nav_msgs::OdometryConstPtr &odom_msg)
     odometry.header.frame_id = "world";
     odometry.child_frame_id = "world";
 
-    Vector3d tmp_T = baseTgt + baseRgt * Vector3d{benchmark[idx - 1].px, benchmark[idx - 1].py, benchmark[idx - 1].pz};
+    Vector3d tmp_T = baseTgt + baseRgt * Vector3d{benchmark[idx - 1].px, -benchmark[idx - 1].py, -benchmark[idx - 1].pz};
     odometry.pose.pose.position.x = tmp_T.x();
     odometry.pose.pose.position.y = tmp_T.y();
     odometry.pose.pose.position.z = tmp_T.z();
 
     Quaterniond tmp_R = baseRgt * Quaterniond{benchmark[idx - 1].qw,
                                               benchmark[idx - 1].qx,
-                                              benchmark[idx - 1].qy,
-                                              benchmark[idx - 1].qz};
+                                              -benchmark[idx - 1].qy,
+                                              -benchmark[idx - 1].qz};
     odometry.pose.pose.orientation.w = tmp_R.w();
     odometry.pose.pose.orientation.x = tmp_R.x();
     odometry.pose.pose.orientation.y = tmp_R.y();
