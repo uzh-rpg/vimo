@@ -38,7 +38,7 @@ struct Data
                &px, &py, &pz,
                &qw, &qx, &qy, &qz) != EOF)
         {
-            t /= 1e6;
+            t /= 1e9;
         }
     }
     double t;
