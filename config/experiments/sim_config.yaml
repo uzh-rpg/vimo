@@ -76,7 +76,7 @@ g_norm: 9.81007      # gravity magnitude
 #model parameters       The more accurate parameters you provide, the better performance
 control_thrust_z_n: 0.08      # standard deviation for noise in mass normalized collective thrust in body z axis (propellor axis)
 control_thrust_x_y_n: 0.03    # standard deviation for noise in mass normalized collective thrust in body x and y axis
-fext_norm_weight: 150         # weight on zero prior for external force norm 
+fext_norm_weight: 150         # weight on zero prior for external force norm. Set this high if you know external forces (including drag) are usually zero norm.
 scale_thrust_input: 1
 
 #loop closure parameters
