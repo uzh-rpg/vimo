@@ -2,6 +2,8 @@
 
 using namespace ros;
 using namespace Eigen;
+
+ros::Publisher pub_extForces;
 ros::Publisher pub_odometry, pub_latest_odometry;
 ros::Publisher pub_path, pub_relo_path;
 ros::Publisher pub_point_cloud, pub_margin_cloud;
@@ -36,6 +38,7 @@ void registerPub(ros::NodeHandle &n)
     pub_keyframe_point = n.advertise<sensor_msgs::PointCloud>("keyframe_point", 1000);
     pub_extrinsic = n.advertise<nav_msgs::Odometry>("extrinsic", 1000);
     pub_relo_relative_pose=  n.advertise<nav_msgs::Odometry>("relo_relative_pose", 1000);
+    pub_extForces = n.advertise<geometry_msgs::WrenchStamped>("extForces", 1000);
 
     cameraposevisual.setScale(1);
     cameraposevisual.setLineWidth(0.05);
@@ -161,7 +164,14 @@ void pubOdometry(const Estimator &estimator, const std_msgs::Header &header)
         path.header = header;
         path.header.frame_id = "world";
         path.poses.push_back(pose_stamped);
-        pub_path.publish(path); // publish updated path of estimated poses from the beginning 
+        pub_path.publish(path); // publish updated path of estimated poses
+
+        geometry_msgs::WrenchStamped extF_stamped;
+        extF_stamped.header = header;
+        extF_stamped.wrench.force.x = estimator.Fexts[WINDOW_SIZE].x();
+        extF_stamped.wrench.force.y = estimator.Fexts[WINDOW_SIZE].y();
+        extF_stamped.wrench.force.z = estimator.Fexts[WINDOW_SIZE].z();
+        pub_extForces.publish(extF_stamped);
 
         Vector3d correct_t;
         //Vector3d correct_v;
