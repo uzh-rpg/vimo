@@ -39,6 +39,8 @@ Clone the repository and catkin_make:
 
 ## 3. VIMO on Public datasets
 
+**Video:**
+
 <a href="https://youtu.be/Qs3MS7GS8pk" target="_blank"><img src="http://img.youtube.com/vi/Qs3MS7GS8pk/0.jpg" 
 width="240" height="180" border="10" /></a>
 
