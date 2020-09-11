@@ -29,6 +29,9 @@ Follow [Ceres Installation](http://ceres-solver.org/installation.html), remember
 Clone the repository and catkin_make:
 ```
     cd ~/catkin_ws/src
+    git clone https://github.com/uzh-rpg/rpg_quadrotor_common
+    git clone https://github.com/catkin/catkin_simple
+    git clone https://github.com/ethz-asl/eigen_catkin
     git clone https://github.com/uzh-rpg/vimo.git
     cd ../
     catkin_make
